@@ -10,4 +10,4 @@
 **Cliquez sur le lien ci-dessous pour faire votre fork privé du TD :**
 https://classroom.github.com/a/f_aXI-ba
 
-### Deadline : 14/02/21 23h00
+### Date limite de rendu: 14/02/2021 23h00
