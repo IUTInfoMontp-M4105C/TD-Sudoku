@@ -65,8 +65,10 @@ public class SudokuSol {
 	}
 
 	/*************************************
-	 * check if the value val is: 1- already used in column col 2- already used in
-	 * row row 3- already used in the square containing the cell grid[row][col]
+	 * check if the value val is: 
+	 * 1- already used in column col 
+	 * 2- already used in row row 
+	 * 3- already used in the square containing the cell grid[row][col]
 	 * 
 	 * @param val
 	 * @param row
@@ -109,8 +111,6 @@ public class SudokuSol {
 		///////////////////////////////////////////////
 		// Now if after incrementing #row we are out the grid it means that we are at
 		// the last recursive call
-
-		///////////////////////////////////////////////
 		// and we have just to print the solution
 
 		/////////////////////////////////////////////// 
