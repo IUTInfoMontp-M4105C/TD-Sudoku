@@ -13,7 +13,12 @@ public class GTSudoku {
 	private final int n = data.grid.length;
 	private final int s = (int) Math.sqrt(n);
 	final static int O = 1, B = 2, T = 3, L = 5, G = 7; // nombres premiers
-
+// O: off
+// B: Bottom
+// T: Top
+// G: Greater than
+// L: Less than
+	
 	final static int BL = B * L;
 	final static int BG = B * G;
 	final static int TL = T * L;
