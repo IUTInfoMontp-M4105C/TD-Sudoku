@@ -1,61 +1,89 @@
-
 package fr.univ_montpellier.iut.sudoku.ppc;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.variables.IntVar;
+
 import static org.chocosolver.solver.search.strategy.Search.minDomLBSearch;
 import static org.chocosolver.util.tools.ArrayUtils.append;
 
 public class GTSudoku {
 
-	static int n;
-	static int s;
-	private static int instance;
-	private static long timeout = 3600000; // one hour
+	Data data = Data.gridGT;
 
-	IntVar[][] rows, cols, shapes;
+	private final int n = data.grid.length;
+	private final int s = (int) Math.sqrt(n);
+	final static int O = 1, B = 2, T = 3, L = 5, G = 7; // nombres premiers
 
-	Model model;
+	final static int BL = B * L;
+	final static int BG = B * G;
+	final static int TL = T * L;
+	final static int TG = T * G;
 
-	public static void main(String[] args) throws ParseException {
+	IntVar[][] rows, cols, squares;
 
-		final Options options = configParameters();
-		final CommandLineParser parser = new DefaultParser();
-		final CommandLine line = parser.parse(options, args);
+	private Model model;
 
-		boolean helpMode = line.hasOption("help"); // args.length == 0
-		if (helpMode) {
-			final HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp("sudoku", options, true);
-			System.exit(0);
+	public void buildModel() {
+		model = new Model();
+
+		rows = new IntVar[n][n];
+		cols = new IntVar[n][n];
+		squares = new IntVar[n][n];
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+
+				rows[i][j] = model.intVar("c_" + i + "_" + j, 1, n, false);
+				cols[j][i] = rows[i][j];
+			}
 		}
-		instance = 4;
-		// Check arguments and options
-		for (Option opt : line.getOptions()) {
-			checkOption(line, opt.getLongOpt());
+
+		for (int i = 0; i < s; i++) {
+			for (int j = 0; j < s; j++) {
+				for (int k = 0; k < s; k++) {
+					for (int l = 0; l < s; l++) {
+						squares[j + k * s][i + (l * s)] = rows[l + k * s][i + j * s];
+					}
+				}
+			}
 		}
 
-		n = instance;
-		s = (int) Math.sqrt(n);
+		for (int i = 0; i < n; i++) {
+			model.allDifferent(rows[i]).post();
+			model.allDifferent(cols[i]).post();
+			model.allDifferent(squares[i]).post();
 
-		new Sudoku().solve();
+		}
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				
+				if (data.grid(i, j) % B == 0)
+					model.arithm(rows[i][j], "<", rows[i + 1][j]).post();
+
+				if (data.grid(i, j) % T == 0)
+					model.arithm(rows[i][j], ">", rows[i + 1][j]).post();
+
+				if (data.grid(i, j) % L == 0)
+					model.arithm(rows[i][j], "<", rows[i][j+1]).post();
+
+				if (data.grid(i, j) % G == 0)
+					model.arithm(rows[i][j], ">", rows[i][j+1]).post();
+
+			}
+		}
+
+	}
+
+	public void configureSearch() {
+		model.getSolver().setSearch(minDomLBSearch(append(rows)));
+
 	}
 
 	public void solve() {
-
-		buildModel();
+		this.buildModel();
 		model.getSolver().showStatistics();
-		model.getSolver().solve();
-		
-		StringBuilder st = new StringBuilder(String.format("Sudoku -- %s\n", instance, " X ", instance));
+		while(model.getSolver().solve());
+
+		StringBuilder st = new StringBuilder(String.format("Sudoku -- %s\n", data.name()));
 		st.append("\t");
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
@@ -67,91 +95,31 @@ public class GTSudoku {
 		System.out.println(st.toString());
 	}
 
-	public void buildModel() {
-		model = new Model();
-
-		rows = new IntVar[n][n];
-		cols = new IntVar[n][n];
-		shapes = new IntVar[n][n];
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				rows[i][j] = model.intVar("c_" + i + "_" + j, 1, n, false);
-				cols[j][i] = rows[i][j];
-			}
-		}
-
-		for (int i = 0; i < s; i++) {
-			for (int j = 0; j < s; j++) {
-				for (int k = 0; k < s; k++) {
-					for (int l = 0; l < s; l++) {
-						shapes[j + k * s][i + (l * s)] = rows[l + k * s][i + j * s];
-					}
-				}
-			}
-		}
-
-		for (
-
-				int i = 0; i < n; i++) {
-			System.out.println(i);
-			model.allDifferent(rows[i], "AC").post();
-			model.allDifferent(cols[i], "AC").post();
-			model.allDifferent(shapes[i], "AC").post();
-		}
-		
-		// --------------------------------------
-		// TODO: add constraints here
-
-		
-		
-		// --------------------------------------
-
-
+	public static void main(String[] args) {
+		new GTSudoku().solve();
 	}
 
-	// Check all parameters values
-	public static void checkOption(CommandLine line, String option) {
+	/////////////////////////////////// DATA
+	/////////////////////////////////// //////////////////////////////////////////////////
+	enum Data {
+		gridGT(new int[][] { { BL, BG, B, TL, TL, B, TG, TL, T }, 
+							 { TL, TL, T, BL, BL, B, BL, TL, T },
+							 { G, L, O, G, G, O, G, L, O }, 
+							 { TG, BG, B, BL, TG, T, BL, BL, T }, 
+							 { BL, TG, B, TG, BG, B, TG, BG, B },
+							 { L, L, O, L, G, O, L, G, O }, 
+							 { BG, BL, B, BG, TG, B, TL, TL, T }, 
+							 { TG, TG, T, TG, TG, B, BG, BG, B },
+							 { G, L, O, G, L, O, G, G, O } }),;
 
-		switch (option) {
-		case "inst":
-			instance = Integer.parseInt(line.getOptionValue(option));
-			break;
-		case "timeout":
-			timeout = Long.parseLong(line.getOptionValue(option));
-			break;
-		default: {
-			System.err.println("Bad parameter: " + option);
-			System.exit(2);
+		final int[][] grid;
+
+		Data(int[][] grid) {
+			this.grid = grid;
 		}
 
+		int grid(int i, int j) {
+			return grid[i][j];
 		}
-
 	}
-
-	// Add options here
-	private static Options configParameters() {
-
-		final Option helpFileOption = Option.builder("h").longOpt("help").desc("Display help message").build();
-
-		final Option instOption = Option.builder("i").longOpt("instance").hasArg(true).argName("sudoku instance")
-				.desc("sudoku instance size").required(false).build();
-
-		final Option limitOption = Option.builder("t").longOpt("timeout").hasArg(true).argName("timeout in ms")
-				.desc("Set the timeout limit to the specified time").required(false).build();
-
-		// Create the options list
-		final Options options = new Options();
-		options.addOption(instOption);
-		options.addOption(limitOption);
-		options.addOption(helpFileOption);
-
-		return options;
-	}
-
-	public void configureSearch() {
-		model.getSolver().setSearch(minDomLBSearch(append(rows)));
-
-	}
-	
-
 }
